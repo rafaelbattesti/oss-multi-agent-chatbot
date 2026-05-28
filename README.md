@@ -69,6 +69,176 @@ packages/
   cli/               thin A2A client (runs on host)
 ```
 
+## Sequence diagrams
+
+These are layered: diagram **1** treats each agent call as a single logical hop;
+diagram **2** expands what *one* hop actually does; diagram **3** zooms into one
+agent's internals (MCP + Ollama). The rest cover the remaining shapes.
+
+### 1. End-to-end orchestration (with the refine loop)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CLI as thesis-cli
+    participant CO as Coordinator
+    participant R as Researcher
+    participant S as Synthesizer
+    participant C as Critic
+
+    User->>CLI: topic
+    CLI->>CO: A2A message/send {topic}
+    Note over CO: LangGraph: research → [synthesize → critique]* → finalize
+
+    CO->>R: A2A {topic}
+    R-->>CO: ResearchFindings {sources, synthesis}
+
+    loop until viable OR revisions >= MAX_REVISIONS
+        CO->>S: A2A {topic, findings, critique?, revision}
+        S-->>CO: ThesisDraft {statement, argument}
+        CO->>C: A2A {topic, draft, findings}
+        C-->>CO: Critique {viable, issues, suggestions}
+        Note over CO: revisions += 1
+        alt viable OR revisions >= MAX_REVISIONS
+            Note over CO: exit loop, go to finalize
+        else not viable and budget remains
+            Note over CO: loop back, passing critique as feedback
+        end
+    end
+
+    Note over CO: finalize builds ThesisResult
+    CO-->>CLI: ThesisResult {statement, argument, viability, sources, revisions}
+    CLI-->>User: rendered thesis
+```
+
+### 2. Anatomy of a single A2A hop
+
+```mermaid
+sequenceDiagram
+    participant Caller as Caller (A2A client)
+    participant Res as A2ACardResolver
+    participant App as Target agent (Starlette)
+    participant Ex as _JsonExecutor
+    participant G as Agent LangGraph
+
+    Caller->>Res: get_agent_card(base_url)
+    Res->>App: GET /.well-known/agent-card.json
+    App-->>Res: AgentCard {url, skills}
+    Res-->>Caller: AgentCard
+
+    Caller->>App: POST card.url, JSON-RPC message/send (JSON in TextPart)
+    App->>Ex: execute(context, event_queue)
+    Ex->>Ex: json.loads(context.get_user_input())
+    Ex->>G: handler(payload) -> graph.ainvoke(state)
+    G-->>Ex: result dict
+    Ex->>App: enqueue new_agent_text_message(json.dumps(result))
+    App-->>Caller: SendMessageSuccessResponse {result: Message}
+    Caller->>Caller: _extract -> json.loads(text) -> dict
+```
+
+### 3. Researcher internals (LangGraph + MCP + Ollama)
+
+```mermaid
+sequenceDiagram
+    participant CO as Coordinator
+    participant RH as Researcher handler
+    participant G as Researcher graph
+    participant O as Ollama (host)
+    participant M as MCP client
+    participant AX as arXiv MCP server
+    participant API as arXiv API
+
+    CO->>RH: A2A {topic}
+    RH->>G: graph.ainvoke({topic})
+
+    Note over G: node plan
+    G->>O: complete_text(QUERY_SYSTEM, topic)
+    O-->>G: search query
+
+    Note over G: node fetch
+    G->>M: arxiv_search(query, max_results=5)
+    M->>AX: MCP streamable-HTTP tools/call arxiv_search
+    AX->>API: arxiv.Search(query)
+    API-->>AX: papers
+    AX-->>M: content blocks (text = paper JSON)
+    M-->>G: _coerce -> [{title, summary, url}]
+
+    Note over G: node summarize
+    G->>O: complete_text(SUMMARY_SYSTEM, abstracts)
+    O-->>G: synthesis
+
+    G-->>RH: ResearchFindings
+    RH-->>CO: ResearchFindings
+```
+
+### 4. Critic / Synthesizer internals (structured output)
+
+```mermaid
+sequenceDiagram
+    participant CO as Coordinator
+    participant H as Agent handler (Critic or Synthesizer)
+    participant G as Single-node graph
+    participant O as Ollama (host)
+
+    CO->>H: A2A payload
+    H->>G: graph.ainvoke(state)
+    Note over G: synthesize -> ThesisDraft / critique -> Critique
+    G->>O: complete_structured(Schema), JSON-schema constrained
+    O-->>G: schema-validated object
+    G-->>H: draft / critique dict
+    H-->>CO: dict
+```
+
+### 5. Startup and dependency ordering
+
+```mermaid
+sequenceDiagram
+    participant DC as docker compose
+    participant MX as mcp_arxiv
+    participant R as agent_researcher
+    participant S as agent_synthesizer
+    participant C as agent_critic
+    participant CO as agent_coordinator
+
+    DC->>MX: start
+    MX-->>DC: serving :8000/mcp
+    par researcher (depends_on mcp_arxiv)
+        DC->>R: start, serve card :8080
+    and synthesizer
+        DC->>S: start, serve card :8080
+    and critic
+        DC->>C: start, serve card :8080
+    end
+    DC->>CO: start (depends_on the three specialists)
+    CO-->>DC: serving :8080, published to host :9000
+    Note over DC,CO: depends_on waits for container start, not readiness;<br/>A2A cards are resolved lazily on first request
+```
+
+### 6. Failure path (arXiv MCP unavailable)
+
+```mermaid
+sequenceDiagram
+    participant G as Researcher graph (fetch)
+    participant M as MCP client
+    participant AX as arXiv MCP server
+    participant O as Ollama
+
+    G->>M: arxiv_search(query)
+    alt MCP reachable
+        M->>AX: tools/call
+        AX-->>M: papers
+        M-->>G: sources
+    else MCP error or tool missing
+        M-->>G: [] (_coerce yields empty list)
+        Note over G: summarize falls back to a "no papers retrieved" prompt
+    end
+    G->>O: complete_text(summary)
+    O-->>G: synthesis (sourceless)
+```
+
+> Coordinator-level failures (a peer timing out past `call_agent`'s 300s budget)
+> propagate up as an error in the MVP — graceful degradation there is a hardening task.
+
 ## Configuration
 
 | Variable | Default | Used by |
