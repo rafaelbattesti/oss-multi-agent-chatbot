@@ -32,4 +32,4 @@ def main() -> None:
         output_model=SynthesisResponse,
         semantic_tags=SEMANTIC_TAGS,
     )
-    serve(card, handle, request_model=SynthesisRequest, response_model=SynthesisResponse)
+    serve(card, handle, request_model=SynthesisRequest)

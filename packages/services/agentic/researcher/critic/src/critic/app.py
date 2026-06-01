@@ -31,4 +31,4 @@ def main() -> None:
         output_model=CritiqueResponse,
         semantic_tags=SEMANTIC_TAGS,
     )
-    serve(card, handle, request_model=CritiqueRequest, response_model=CritiqueResponse)
+    serve(card, handle, request_model=CritiqueRequest)

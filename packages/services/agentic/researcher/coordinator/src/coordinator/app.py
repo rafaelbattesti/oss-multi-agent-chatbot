@@ -30,4 +30,4 @@ def main() -> None:
         output_model=ThesisResult,
         semantic_tags=SEMANTIC_TAGS,
     )
-    serve(card, handle, request_model=ThesisRequest, response_model=ThesisResult)
+    serve(card, handle, request_model=ThesisRequest)

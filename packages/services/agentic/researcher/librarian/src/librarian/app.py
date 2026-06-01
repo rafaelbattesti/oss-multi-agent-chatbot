@@ -27,4 +27,4 @@ def main() -> None:
         output_model=ResearchResponse,
         semantic_tags=SEMANTIC_TAGS,
     )
-    serve(card, handle, request_model=ResearchRequest, response_model=ResearchResponse)
+    serve(card, handle, request_model=ResearchRequest)

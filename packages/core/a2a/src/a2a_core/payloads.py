@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TypeVar
 
-from a2a.helpers.proto_helpers import get_data_parts, new_data_message
-from a2a.types import Message, Role
+from a2a.helpers.proto_helpers import get_data_parts, new_data_message, new_data_part
+from a2a.types import Message, Part, Role, Task
 from pydantic import BaseModel, ValidationError
 
 from contracts import CONTRACT_VERSION
@@ -57,6 +57,33 @@ def model_from_message(message: Message | None, model: type[T]) -> T:
             data={"payload_type": type(payload).__name__},
         )
 
+    try:
+        return model.model_validate(payload)
+    except ValidationError as exc:
+        raise PayloadContractError(
+            f"Invalid {model.__name__} payload", data={"errors": exc.errors()}
+        ) from exc
+
+
+def part_from_model(payload: BaseModel) -> Part:
+    """Serialize a contract model into a single A2A data Part."""
+    return new_data_part(payload.model_dump(mode="json"), media_type=JSON_MEDIA_TYPE)
+
+
+def model_from_task(task: Task, model: type[T]) -> T:
+    parts = [part for artifact in task.artifacts for part in artifact.parts]
+    datas = get_data_parts(parts)
+    if len(datas) != 1:
+        raise PayloadContractError(
+            f"Expected exactly one {JSON_MEDIA_TYPE} data artifact for {model.__name__}",
+            data={"data_part_count": len(datas)},
+        )
+    payload = datas[0]
+    if not isinstance(payload, dict):
+        raise PayloadContractError(
+            f"Expected {model.__name__} artifact to contain a JSON object",
+            data={"payload_type": type(payload).__name__},
+        )
     try:
         return model.model_validate(payload)
     except ValidationError as exc:

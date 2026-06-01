@@ -4,7 +4,7 @@ import logging
 
 import pytest
 from a2a.helpers.proto_helpers import new_data_message, new_text_message
-from a2a.types import Role
+from a2a.types import Artifact, Role, Task, TaskState
 from google.protobuf.json_format import MessageToDict
 
 from coordinator.graph import _route
@@ -17,10 +17,12 @@ from a2a_core import (
     PayloadContractError,
     message_from_model,
     model_from_message,
+    model_from_task,
+    part_from_model,
 )
 from a2a_core.server import (
     CONTRACT_EXTENSION_URI,
-    _StructuredExecutor,
+    A2AAgentExecutor,
     build_card,
 )
 from observability import parse_log_level
@@ -106,29 +108,57 @@ async def test_call_agent_logs_transport_failures(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-async def test_executor_logs_handler_failures(caplog):
-    async def fail_handler(payload):
-        raise RuntimeError("LLM unavailable")
+async def test_executor_runs_task_lifecycle():
+    async def invoke(request: ResearchRequest) -> ResearchResponse:
+        return ResearchResponse(
+            findings=ResearchFindings(topic=request.topic, synthesis="s")
+        )
 
-    class Context:
+    class _RecordingQueue:
+        def __init__(self) -> None:
+            self.events = []
+
+        async def enqueue_event(self, event):
+            self.events.append(event)
+
+    class _Context:
         message = message_from_model(
             ResearchRequest(topic="efficient RAG"), role=Role.ROLE_USER
         )
-        task_id = "task-1"
-        context_id = "context-1"
+        current_task = None
 
-    executor = _StructuredExecutor(
-        fail_handler,
-        "Researcher",
-        ResearchRequest,
-        ResearchResponse,
+    executor = A2AAgentExecutor(invoke, request_model=ResearchRequest)
+    queue = _RecordingQueue()
+
+    await executor.execute(_Context(), queue)
+
+    states = [
+        event.status.state
+        for event in queue.events
+        if getattr(event, "status", None) is not None
+    ]
+    assert TaskState.TASK_STATE_WORKING in states
+    assert TaskState.TASK_STATE_COMPLETED in states
+
+    artifact_events = [
+        event for event in queue.events if getattr(event, "artifact", None) is not None
+    ]
+    assert len(artifact_events) == 1
+    parsed = model_from_task(
+        Task(artifacts=[artifact_events[0].artifact]), ResearchResponse
+    )
+    assert parsed.findings.topic == "efficient RAG"
+
+
+def test_a2a_artifact_roundtrips_typed_payload():
+    response = ResearchResponse(findings=ResearchFindings(topic="t", synthesis="s"))
+    task = Task(
+        artifacts=[
+            Artifact(parts=[part_from_model(response)], name="research_findings")
+        ]
     )
 
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(RuntimeError, match="LLM unavailable"):
-            await executor.execute(Context(), object())
-
-    assert "Researcher failed while handling ResearchRequest" in caplog.text
+    assert model_from_task(task, ResearchResponse) == response
 
 
 def test_route_finalizes_when_viable():

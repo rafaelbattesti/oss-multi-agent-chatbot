@@ -1,53 +1,53 @@
-"""Minimal A2A server scaffolding shared by every agent.
+"""A2A server scaffolding: agent-card builder, task-lifecycle executor, app/serve.
 
-An agent supplies an async typed handler; this module wraps it in an A2A
-``AgentExecutor`` that carries Pydantic contracts as structured data parts.
+The executor implements the SDK ``AgentExecutor`` ABC and acts as the bridge
+between the A2A protocol and the agent's business logic: it drives the task
+lifecycle (working -> artifact -> completed) and calls the injected business
+logic, which maps the typed request to a typed response.
 """
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Awaitable, Callable
 from typing import Sequence
 
+import config
 import uvicorn
+from a2a.helpers.proto_helpers import new_task_from_user_message, new_text_message
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes.agent_card_routes import create_agent_card_routes
 from a2a.server.routes.jsonrpc_routes import create_jsonrpc_routes
-from a2a.server.tasks import InMemoryTaskStore
+from a2a.server.tasks import InMemoryTaskStore, TaskUpdater
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
     AgentExtension,
     AgentInterface,
     AgentSkill,
-    Role,
+    TaskState,
 )
-from a2a.utils.errors import InvalidAgentResponseError, InvalidParamsError
 from a2a.utils import DEFAULT_RPC_URL, TransportProtocol
+from a2a.utils.errors import UnsupportedOperationError
 from google.protobuf import struct_pb2
 from google.protobuf.json_format import ParseDict
-from pydantic import BaseModel, ValidationError
+from observability import configure_logging
+from pydantic import BaseModel
 from starlette.applications import Starlette
-
-import config
 
 from .payloads import (
     JSON_MEDIA_TYPE,
-    PayloadContractError,
     contract_extension_params,
     contract_tags,
-    message_from_model,
     model_from_message,
+    part_from_model,
 )
-from observability import configure_logging
-
-Handler = Callable[[BaseModel], Awaitable[BaseModel | dict]]
-logger = logging.getLogger(__name__)
 
 CONTRACT_EXTENSION_URI = "urn:thesis:a2a:contract"
+
+# The agent's business logic: map a typed request to a typed response.
+Invoke = Callable[[BaseModel], Awaitable[BaseModel]]
 
 
 def _struct(value: dict) -> struct_pb2.Struct:
@@ -99,106 +99,50 @@ def build_card(
     )
 
 
-class _StructuredExecutor(AgentExecutor):
-    def __init__(
-        self,
-        handler: Handler,
-        agent_name: str,
-        request_model: type[BaseModel],
-        response_model: type[BaseModel],
-    ) -> None:
-        self._handler = handler
-        self._agent_name = agent_name
+class A2AAgentExecutor(AgentExecutor):
+    """Bridge between the A2A protocol and an agent's business logic."""
+
+    def __init__(self, invoke: Invoke, *, request_model: type[BaseModel]) -> None:
+        self._invoke = invoke
         self._request_model = request_model
-        self._response_model = response_model
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        try:
-            payload = model_from_message(context.message, self._request_model)
-        except PayloadContractError as exc:
-            logger.warning(
-                "%s rejected an invalid %s request for task %s in context %s: %s.",
-                self._agent_name,
-                self._request_model.__name__,
-                context.task_id,
-                context.context_id,
-                str(exc),
-                exc_info=True,
-            )
-            raise InvalidParamsError(message=str(exc), data=exc.data) from exc
+        # 1. Collect a task from request context, creating one if absent.
+        if context.current_task:
+            task = context.current_task
+        else:
+            task = new_task_from_user_message(context.message)
+            await event_queue.enqueue_event(task)
 
-        logger.info(
-            "%s accepted a %s request for task %s in context %s.",
-            self._agent_name,
-            self._request_model.__name__,
-            context.task_id,
-            context.context_id,
+        # 2. Mark the task working.
+        task_updater = TaskUpdater(
+            event_queue=event_queue, task_id=task.id, context_id=task.context_id
         )
-        try:
-            result = await self._handler(payload)
-        except Exception:
-            logger.exception(
-                "%s failed while handling %s and preparing %s for task %s "
-                "in context %s.",
-                self._agent_name,
-                self._request_model.__name__,
-                self._response_model.__name__,
-                context.task_id,
-                context.context_id,
-            )
-            raise
+        await task_updater.update_status(
+            state=TaskState.TASK_STATE_WORKING,
+            message=new_text_message("Processing request..."),
+        )
 
-        try:
-            if isinstance(result, self._response_model):
-                response = result
-            elif isinstance(result, BaseModel):
-                response = self._response_model.model_validate(result.model_dump())
-            else:
-                response = self._response_model.model_validate(result)
-        except ValidationError as exc:
-            logger.error(
-                "%s produced an invalid %s response for task %s in context %s.",
-                self._agent_name,
-                self._response_model.__name__,
-                context.task_id,
-                context.context_id,
-                exc_info=True,
-            )
-            raise InvalidAgentResponseError(
-                message=f"Handler returned invalid {self._response_model.__name__}",
-                data={"errors": exc.errors()},
-            ) from exc
+        # 3. Decode the typed request and invoke the business logic.
+        request = model_from_message(context.message, self._request_model)
+        response = await self._invoke(request)
 
-        logger.info(
-            "%s produced a valid %s response for task %s in context %s.",
-            self._agent_name,
-            self._response_model.__name__,
-            context.task_id,
-            context.context_id,
+        # 4. Emit the typed response as an artifact.
+        await task_updater.add_artifact(parts=[part_from_model(response)])
+
+        # 5. Mark the task completed.
+        await task_updater.update_status(
+            state=TaskState.TASK_STATE_COMPLETED,
+            message=new_text_message("Request is completed!"),
         )
-        message = message_from_model(
-            response,
-            role=Role.ROLE_AGENT,
-            context_id=context.context_id,
-            task_id=context.task_id,
-        )
-        await event_queue.enqueue_event(message)
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        raise NotImplementedError("cancellation is not supported in the MVP")
+        raise UnsupportedOperationError("This agent does not support cancellation.")
 
 
-def build_app(
-    card: AgentCard,
-    handler: Handler,
-    *,
-    request_model: type[BaseModel],
-    response_model: type[BaseModel],
-):
+def build_app(card: AgentCard, invoke: Invoke, *, request_model: type[BaseModel]):
     request_handler = DefaultRequestHandler(
-        agent_executor=_StructuredExecutor(
-            handler, card.name, request_model, response_model
-        ),
+        agent_executor=A2AAgentExecutor(invoke, request_model=request_model),
         task_store=InMemoryTaskStore(),
         agent_card=card,
     )
@@ -208,21 +152,10 @@ def build_app(
     return Starlette(routes=routes)
 
 
-def serve(
-    card: AgentCard,
-    handler: Handler,
-    *,
-    request_model: type[BaseModel],
-    response_model: type[BaseModel],
-) -> None:
+def serve(card: AgentCard, invoke: Invoke, *, request_model: type[BaseModel]) -> None:
     configure_logging()
     uvicorn.run(
-        build_app(
-            card,
-            handler,
-            request_model=request_model,
-            response_model=response_model,
-        ),
+        build_app(card, invoke, request_model=request_model),
         host="0.0.0.0",
         port=config.PORT,
     )
