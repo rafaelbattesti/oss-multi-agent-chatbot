@@ -4,7 +4,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill
 from starlette.applications import Starlette
 
-from bastion_agent.executor import BastionAgentExecutor
+from bastion.executor import BastionAgentExecutor
 
 
 def create_agent_card(base_url: str) -> AgentCard:

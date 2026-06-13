@@ -7,7 +7,7 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types.a2a_pb2 import TaskState
 from google.protobuf.json_format import MessageToDict
 
-from bastion_agent.graph import run_stub_graph
+from bastion.graph import run_stub_graph
 
 
 def _serialize_payload(payload: Any) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 import uvicorn
 
-from bastion_agent.server import app
+from bastion.server import app
 
 
 def main() -> None:

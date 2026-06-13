@@ -1,5 +1,5 @@
 [project]
-name = "bastion-agent"
+name = "bastion"
 version = "0.1.0"
 description = "Stub A2A agent that returns the received payload."
 readme = "README.md"
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-bastion-agent = "bastion_agent.__main__:main"
+bastion = "bastion.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

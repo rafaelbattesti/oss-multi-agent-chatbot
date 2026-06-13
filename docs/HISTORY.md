@@ -76,13 +76,13 @@ Refined by user:
 
 **Success criteria**
 
-  - [ ] 1. `platform/agents/bastion` contains a uv-managed Python project with `pyproject.toml` and `uv.lock`.
-  - [ ] 2. The project depends on `langgraph==1.2.5` and `a2a-sdk==1.1.0`.
-  - [ ] 3. The server defines an A2A agent card and exposes the discovery route.
-  - [ ] 4. The server exposes an A2A JSON-RPC endpoint.
-  - [ ] 5. The agent uses LangGraph without LLM connectivity.
-  - [ ] 6. The agent response message visible to the user contains the request payload received by the agent.
-  - [ ] 7. Unit tests are written before implementation and verify graph behavior, A2A app wiring, and response payload behavior.
+  - [x] 1. `platform/agents/bastion` contains a uv-managed Python project with `pyproject.toml` and `uv.lock`.
+  - [x] 2. The project depends on `langgraph==1.2.5` and `a2a-sdk==1.1.0`.
+  - [x] 3. The server defines an A2A agent card and exposes the discovery route.
+  - [x] 4. The server exposes an A2A JSON-RPC endpoint.
+  - [x] 5. The agent uses LangGraph without LLM connectivity.
+  - [x] 6. The agent response message visible to the user contains the request payload received by the agent.
+  - [x] 7. Unit tests are written before implementation and verify graph behavior, A2A app wiring, and response payload behavior.
 
 
 

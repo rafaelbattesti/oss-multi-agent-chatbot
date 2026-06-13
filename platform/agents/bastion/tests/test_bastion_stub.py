@@ -26,7 +26,7 @@ class ProjectMetadataTests(unittest.TestCase):
 
 class GraphTests(unittest.TestCase):
     def test_graph_encapsulates_received_payload_in_response_text(self) -> None:
-        from bastion_agent.graph import run_stub_graph
+        from bastion.graph import run_stub_graph
 
         payload = {
             "jsonrpc": "2.0",
@@ -50,7 +50,7 @@ class GraphTests(unittest.TestCase):
 
 class A2AServerTests(unittest.TestCase):
     def test_server_exposes_agent_card_discovery_and_jsonrpc_routes(self) -> None:
-        from bastion_agent.server import agent_card, app
+        from bastion.server import agent_card, app
 
         route_paths = {route.path for route in app.routes}
 
@@ -59,7 +59,7 @@ class A2AServerTests(unittest.TestCase):
         self.assertIn("/", route_paths)
 
     def test_executor_response_text_contains_payload_received_by_agent(self) -> None:
-        from bastion_agent.executor import build_response_message_text
+        from bastion.executor import build_response_message_text
 
         payload = {
             "message": {
