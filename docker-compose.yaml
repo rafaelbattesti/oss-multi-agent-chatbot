@@ -1,0 +1,15 @@
+services:
+  chat-ui:
+    build:
+      context: ./apps/chat-ui
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_A2A_SERVER_URL: ${NEXT_PUBLIC_A2A_SERVER_URL:-http://localhost:9999}
+    image: oss-multi-agent-chatbot-chat-ui
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_A2A_SERVER_URL: ${NEXT_PUBLIC_A2A_SERVER_URL:-http://localhost:9999}
+    ports:
+      - "3000:3000"

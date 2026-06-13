@@ -3,7 +3,7 @@
 
 ## Edge / Identity
 
-- **UI** — React + assistant-ui (A2A client runtime) + official A2UI React renderer; static bundle via nginx.
+- **UI** — Next.js + assistant-ui (A2A client runtime) + official A2UI React renderer; standalone app container.
 - **Dex** — OIDC identity provider; federates upstream IdP; issues tokens the guard validates.
 - **Backend Server** — A2A Server; authn/z, tenancy, rate limits; enqueue jobs for orchestrator workers, relay event streams as SSE; zero agent logic.
 
@@ -39,3 +39,5 @@
 - **Grafana** — dashboards.
 
 ## System decisions
+
+- The UI runs as a Next.js standalone app container built from `apps/chat-ui`.

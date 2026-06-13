@@ -25,6 +25,36 @@ Propose the folder scaffold based on SYSTEM.md, and lets iterate. (Refined to: c
   - [x] 3. Directory infra/ exists at repo root.
 
 
+## Task:2
+
+**Timestamp** 2026-06-13T00:40:35Z
+
+**Description**
+
+dockerize the frontend in apps/chat-ui. This task definition must follow the create-task instructions in AGENTS.md.
+
+Refined by user:
+1. the answer is in the next.js docs. as a "standalone" app, defined in the next.js config.
+2. add .dockerignore
+3. don't run any docker executable. Create a root docker-compose.yaml file and add the chat-ui as a service.
+4. Consult the next.js docs.
+
+Added scope: update SYSTEM.md
+
+**Assistant assumptions**
+
+  - 1. None.
+
+**Success criteria**
+
+  - [x] 1. `apps/chat-ui/next.config.ts` configures the app with Next.js `output: "standalone"`.
+  - [x] 2. `apps/chat-ui/Dockerfile` builds the app and runs the Next.js standalone server.
+  - [x] 3. `apps/chat-ui/.dockerignore` excludes dependency folders, build outputs, local environment files, and local tooling artifacts from the Docker build context.
+  - [x] 4. Root `docker-compose.yaml` defines a `chat-ui` service that builds from `apps/chat-ui` and publishes the standalone app on port `3000`.
+  - [x] 5. `docs/SYSTEM.md` records the UI as a standalone Next.js app container.
+  - [x] 6. Verification does not run any Docker executable.
+
+
 
 ## Feedback record
 
@@ -56,6 +86,14 @@ I over-scoped by mapping every SYSTEM.md component into the proposed buckets whe
 
 
 ## Decision record
+
+### Decision:1
+
+**Timestamp** 2026-06-13T00:40:35Z
+
+**Decision**
+
+The chat UI will be containerized as a Next.js standalone app by setting `output: "standalone"` in `apps/chat-ui/next.config.ts` and running the generated standalone server in the container.
 
 
 
