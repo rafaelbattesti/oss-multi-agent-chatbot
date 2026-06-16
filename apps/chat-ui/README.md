@@ -1,57 +1,21 @@
-# with-a2a
+# React + TypeScript + Vite + shadcn/ui
 
-An example of using [assistant-ui](https://www.assistant-ui.com/) with the [A2A (Agent-to-Agent) protocol](https://github.com/a2aproject/A2A).
+This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
 
-## Getting Started
+## Adding components
 
-### 1. Start an A2A server
-
-You need an A2A-compatible agent server. For example, using the [assistant-ui-a2a](https://github.com/assistant-ui/assistant-ui-a2a) kitchen sink demo:
+To add components to your app, run the following command:
 
 ```bash
-cd a2a-server
-pip install -e .
-python main.py
+npx shadcn@latest add button
 ```
 
-This starts an A2A server at `http://localhost:9999` with 5 skills.
+This will place the ui components in the `src/components` directory.
 
-### 2. Configure the frontend
+## Using components
 
-```bash
-cp .env.example .env
-# Edit .env if your A2A server is not at localhost:9999
+To use the components in your app, import them as follows:
+
+```tsx
+import { Button } from "@/components/ui/button"
 ```
-
-### 3. Run the frontend
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-## Features Demonstrated
-
-| Feature | Skill / Command |
-|---|---|
-| Streaming chat | Default chat |
-| Artifacts (text, data, file) | `/artifacts <topic>` |
-| Multi-step input-required flow | `/multistep` then provide topic |
-| Error/failure handling | `/fail` |
-| Long-running + cancellation | `/slow` |
-| Agent card display | Automatic on load |
-| Task state tracking (8 states) | All commands |
-
-## Architecture
-
-```
-Browser (Next.js) ──A2A v1.0 SSE──▶ A2A Server
-```
-
-No proxy backend needed. `@assistant-ui/react-a2a` handles the full A2A protocol directly:
-- Agent card discovery (`/.well-known/agent-card.json`)
-- Streaming via `POST /message:stream` (SSE)
-- Task lifecycle management
-- Artifact accumulation
