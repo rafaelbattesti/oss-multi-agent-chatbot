@@ -1,21 +1,25 @@
-# React + TypeScript + Vite + shadcn/ui
+This is the [assistant-ui](https://github.com/assistant-ui/assistant-ui) starter project.
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+## Getting Started
 
-## Adding components
+First, add your OpenAI API key to `.env.local` file:
 
-To add components to your app, run the following command:
+```
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Then, run the development server:
 
 ```bash
-npx shadcn@latest add button
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-This will place the ui components in the `src/components` directory.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button"
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
