@@ -1,19 +1,20 @@
-# syntax=docker/dockerfile:1
+FROM python:3.14-slim
 
-FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_LINK_MODE=copy
+# Install dependencies — cached layer, source files not yet present.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=.python-version,target=.python-version \
+    uv sync --locked --no-dev --no-install-project
+
+COPY . .
+
 ENV PATH="/app/.venv/bin:$PATH"
-
-COPY pyproject.toml uv.lock README.md ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
-
-COPY src ./src
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev
 
 EXPOSE 9999
 
-CMD ["uvicorn", "bastion.server:app", "--host", "0.0.0.0", "--port", "9999"]
+CMD ["python", "__main__.py"]

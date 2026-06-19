@@ -25,6 +25,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
 } from "@assistant-ui/react";
+import { useA2AArtifacts } from "@assistant-ui/react-a2a";
 import "@assistant-ui/react-markdown/styles/dot.css";
 
 import { Button } from "@/components/ui/button";
@@ -37,14 +38,24 @@ import {
   UserMessageAttachments,
 } from "@/components/assistant-ui/attachment";
 import { cn } from "@/lib/utils";
+
+const DECOMPOSE_QUERY_ARTIFACT = "decompose-query" as const;
+
+type DecompositionData = {
+  intent: string;
+  subject: string;
+  entities: string[];
+  complexity: "simple" | "medium" | "complex";
+  sub_queries: string[];
+};
 export function Thread() {
   return (
     <ThreadPrimitive.Root
       className="flex h-full flex-col bg-background text-base"
       style={{
-        "--thread-max-width": "48rem",
-        "--accent-color": "#10a37f",
-        "--accent-foreground": "#ffffff",
+        ["--thread-max-width" as string]: "48rem",
+        ["--accent-color" as string]: "#10a37f",
+        ["--accent-foreground" as string]: "#ffffff",
       }}
     >
       <ThreadPrimitive.Viewport
@@ -211,6 +222,11 @@ function EditComposer() {
 }
 
 function AssistantMessage() {
+  const artifacts = useA2AArtifacts();
+  const decomposition = artifacts
+    ?.find((a) => a.name === DECOMPOSE_QUERY_ARTIFACT)
+    ?.parts.find((p) => p.data != null)?.data as DecompositionData | undefined;
+
   return (
     <MessagePrimitive.Root
       className="relative mx-auto w-full max-w-[var(--thread-max-width)] py-4 fade-in slide-in-from-bottom-1 animate-in duration-150"
@@ -220,12 +236,16 @@ function AssistantMessage() {
         <BotIcon className="size-4" />
       </div>
       <div className="break-words px-2 leading-relaxed text-foreground">
-        <MessagePrimitive.Parts
-          components={{
-            Text: MarkdownText,
-            tools: { Fallback: ToolFallback },
-          }}
-        />
+        {decomposition ? (
+          <DecompositionCard data={decomposition} />
+        ) : (
+          <MessagePrimitive.Parts
+            components={{
+              Text: MarkdownText,
+              tools: { Fallback: ToolFallback },
+            }}
+          />
+        )}
         <MessageError />
         <AuiIf condition={(s) => s.thread.isRunning && s.message.content.length === 0}>
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -239,8 +259,54 @@ function AssistantMessage() {
         <BranchPicker />
         <AssistantActionBar />
       </div>
-      
     </MessagePrimitive.Root>
+  );
+}
+
+function DecompositionCard({ data }: { data: DecompositionData }) {
+  const complexityColor = {
+    simple: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    complex: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  }[data.complexity] ?? "bg-muted text-muted-foreground";
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-2.5">
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 font-medium text-muted-foreground">Intent</span>
+        <span>{data.intent}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 font-medium text-muted-foreground">Subject</span>
+        <span>{data.subject}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 font-medium text-muted-foreground">Complexity</span>
+        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", complexityColor)}>
+          {data.complexity}
+        </span>
+      </div>
+      {data.entities.length > 0 && (
+        <div className="flex items-start gap-3">
+          <span className="w-24 shrink-0 font-medium text-muted-foreground">Entities</span>
+          <div className="flex flex-wrap gap-1">
+            {data.entities.map((e) => (
+              <span key={e} className="rounded-md bg-muted px-2 py-0.5 text-xs">{e}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      {data.sub_queries.length > 0 && (
+        <div className="flex items-start gap-3">
+          <span className="w-24 shrink-0 font-medium text-muted-foreground">Sub-queries</span>
+          <ul className="space-y-1">
+            {data.sub_queries.map((q, i) => (
+              <li key={i} className="text-muted-foreground">↳ {q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 

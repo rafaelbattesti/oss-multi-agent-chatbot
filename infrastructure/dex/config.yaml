@@ -1,0 +1,63 @@
+# Dex OIDC provider configuration.
+# Static config — no gomplate templating; update CHANGEME values before starting.
+#
+# Browser-based OAuth flows require the host to resolve `dex`:
+#   echo "127.0.0.1 dex" | sudo tee -a /etc/hosts
+
+issuer: http://dex:5556/dex
+
+storage:
+  type: postgres
+  config:
+    host: postgres
+    port: 5432
+    database: dex
+    user: postgres
+    password: postgres  # CHANGEME — must match POSTGRES_PASSWORD in docker-compose.yaml
+    ssl:
+      mode: disable
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  responseTypes: [code]
+  skipApprovalScreen: true
+
+expiry:
+  deviceRequests: 5m
+  idTokens: 24h
+  authRequests: 24h
+
+logger:
+  level: info
+  format: text
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: admin@example.com
+    # bcrypt hash of "password" (from dex's own examples — CHANGEME for production).
+    # Regenerate: echo password | htpasswd -BinC 10 admin | cut -d: -f2
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: admin
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+
+staticClients:
+  - id: agentgateway
+    name: AgentGateway
+    secret: agentgateway-secret  # CHANGEME
+    redirectURIs:
+      - http://localhost:3002/callback
+
+  - id: agentregistry
+    name: AgentRegistry
+    secret: agentregistry-secret  # CHANGEME
+    redirectURIs:
+      - http://localhost:8080/callback
+
+  - id: langfuse
+    name: Langfuse
+    secret: langfuse-dex-secret  # CHANGEME
+    redirectURIs:
+      - http://localhost:3000/api/auth/callback/dex

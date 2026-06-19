@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+#
+# Agentgateway v1.3.0-alpha.1 configuration.
+# Reference: https://agentgateway.dev/docs/standalone/main/deployment/docker/
+# Add MCP targets under `backends[].mcp.targets` as needed.
+
+binds:
+  - port: 3000
+    listeners:
+      - routes:
+          - policies:
+              cors:
+                allowOrigins:
+                  - "*"
+                allowHeaders:
+                  - mcp-protocol-version
+                  - content-type
+                  - cache-control
+                  - mcp-session-id
+                exposeHeaders:
+                  - "Mcp-Session-Id"
+            backends:
+              - mcp:
+                  targets: []

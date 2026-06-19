@@ -1,0 +1,3 @@
+CREATE DATABASE langfuse;
+CREATE DATABASE agentregistry;
+CREATE DATABASE dex;

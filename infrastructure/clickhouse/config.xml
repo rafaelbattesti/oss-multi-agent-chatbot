@@ -1,0 +1,9 @@
+<clickhouse>
+    <!-- Accept connections from any address within the Docker network. -->
+    <listen_host>0.0.0.0</listen_host>
+
+    <logger>
+        <level>warning</level>
+        <console>1</console>
+    </logger>
+</clickhouse>
