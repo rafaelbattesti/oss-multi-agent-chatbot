@@ -108,7 +108,7 @@
   --aui-composer: #f7f7f8;
   --aui-max-width: 48rem;
   --aui-border-radius: 1.5rem;
-  --aui-font-family: system-ui;
+  --aui-font-family: var(--font-geist-sans);
 }
 
 .dark {
@@ -153,7 +153,7 @@
   --aui-composer: #2f2f2f;
   --aui-max-width: 48rem;
   --aui-border-radius: 1.5rem;
-  --aui-font-family: system-ui;
+  --aui-font-family: var(--font-geist-sans);
 }
 
 @layer base {
