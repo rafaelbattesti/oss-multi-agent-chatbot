@@ -18,19 +18,19 @@ llm = ChatOllama(
 SYSTEM_PROMPT = "Decompose the user query into structured components."
 
 
-class BastionState(TypedDict):
+class OrchestratorState(TypedDict):
     query: str
     result: dict
 
 
-def decompose_query(state: BastionState) -> dict:
+def decompose_query(state: OrchestratorState) -> dict:
     messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=state["query"])]
     response = llm.invoke(messages)
     return {"result": json.loads(response.content)}
 
 
 graph = (
-    StateGraph(BastionState)
+    StateGraph(OrchestratorState)
     .add_edge(START, "decompose_query")
     .add_node("decompose_query", decompose_query)
     .add_edge("decompose_query", END)
@@ -39,6 +39,6 @@ graph = (
 
 
 def invoke(context: RequestContext) -> dict:
-    state = BastionState(query=context.get_user_input())
-    result: BastionState = graph.invoke(state, config={"configurable": {"thread_id": context.context_id}})
+    state = OrchestratorState(query=context.get_user_input())
+    result: OrchestratorState = graph.invoke(state, config={"configurable": {"thread_id": context.context_id}})
     return result["result"]

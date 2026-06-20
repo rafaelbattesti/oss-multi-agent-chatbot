@@ -7,7 +7,7 @@ from skills.decompose_query import decompose_query_skill
 from graph import invoke
 
 
-class BastionAgentExecutor(AgentExecutor):
+class ChatAgentExecutor(AgentExecutor):
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task = context.current_task or new_task_from_user_message(context.message)

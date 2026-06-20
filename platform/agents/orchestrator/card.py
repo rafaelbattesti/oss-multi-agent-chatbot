@@ -7,8 +7,8 @@ from a2a.types import (
 from skills.decompose_query import decompose_query_extension, decompose_query_skill
 
 public_agent_card = AgentCard(
-    name='Bastion',
-    description='Gateway agent: validates, classifies, and routes user queries to the agent layer.',
+    name='Orchestrator',
+    description='Orchestrates the tasks received from the users.',
     version='1.0.0',
     default_input_modes=['text/plain'],
     default_output_modes=['text/plain'],

@@ -10,7 +10,7 @@ from a2a.server.routes import (
 )
 from a2a.server.tasks import InMemoryTaskStore
 
-from executor import BastionAgentExecutor
+from executor import OrchestratorAgentExecutor
 from card import public_agent_card
 
 from starlette.applications import Starlette
@@ -19,7 +19,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 if __name__ == '__main__':
     request_handler = DefaultRequestHandler(
-        agent_executor=BastionAgentExecutor(),
+        agent_executor=OrchestratorAgentExecutor(),
         task_store=InMemoryTaskStore(),
         agent_card=public_agent_card,
         extended_agent_card=public_agent_card,

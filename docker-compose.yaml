@@ -158,11 +158,11 @@ services:
     env_file:
       - ./infrastructure/langfuse/config.env
 
-  # ── Bastion Agent ──────────────────────────────────────────────────────────────
+  # ── A2A Servers ──────────────────────────────────────────────────────────────
 
-  bastion:
+  orchestrator:
     build:
-      context: ./platform/agents/bastion
+      context: ./platform/agents/orchestrator
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
@@ -170,7 +170,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
-      - ./infrastructure/bastion/config.env
+      - ./infrastructure/orchestrator/config.env
+
+  chat:
+    build:
+      context: ./platform/agents/chat
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "9998:9998"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ./infrastructure/chat/config.env
 
   # ── Chat UI ────────────────────────────────────────────────────────────────────
 

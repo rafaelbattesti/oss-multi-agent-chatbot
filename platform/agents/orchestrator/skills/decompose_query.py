@@ -27,7 +27,7 @@ decompose_query_skill = AgentSkill(
 )
 
 decompose_query_extension = AgentExtension(
-    uri='bastion/skills/decompose-query/contract',
+    uri='orchestrator/skills/decompose-query/contract',
     required=True,
     params={
         'skill_id': decompose_query_skill.id,
