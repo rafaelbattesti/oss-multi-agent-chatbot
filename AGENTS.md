@@ -19,8 +19,13 @@
 
 ### Grounding
 
-> You must never propose any solution before consulting the tools documentation. 
-> Never ground your suggestions on your weights and biases.
+> You must never propose any solution before consulting the used libraries documentation. 
+> Never ground your suggestions on your weights and biases, always on vendor documentation and installed libraries.
+
+### Command execution for confirmations
+
+> If you need to confirm the state of anything in the project and local execution runtime, do not ask to run commands, ask me what you need to know and I'll answer.
+> For example: finding a file, determining whether a service is running, reading logs.
 
 ### System
 

@@ -6,11 +6,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langgraph.graph import START, END, StateGraph
 
+from config import load_config
 from skills.decompose_query import OUTPUT_SCHEMA
+
+config = load_config()
 
 llm = ChatOllama(
     model="gemma4",
-    base_url="http://host.docker.internal:11434",
+    base_url=config.ollama_base_url,
     format=OUTPUT_SCHEMA,
     disable_streaming=True
 )

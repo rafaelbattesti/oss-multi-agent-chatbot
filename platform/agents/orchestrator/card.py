@@ -4,7 +4,10 @@ from a2a.types import (
     AgentCard,
 )
 
+from config import load_config
 from skills.decompose_query import decompose_query_extension, decompose_query_skill
+
+config = load_config()
 
 public_agent_card = AgentCard(
     name='Orchestrator',
@@ -20,7 +23,7 @@ public_agent_card = AgentCard(
     supported_interfaces=[
         AgentInterface(
             protocol_binding='HTTP+JSON',
-            url='http://localhost:9999',
+            url=config.public_base_url,
         )
     ],
     skills=[decompose_query_skill],
